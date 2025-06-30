@@ -3,15 +3,13 @@ import React from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import Login from '../user/Login';
 import Register from '../user/Register';
+import ProtectedRoute from '../components/ProtectedRoute';
 
 import HomePage from '../pages/HomePage';
 import NewsPage from '../pages/newspage';
+import StoryPage from '../pages/StoryPage';
+import StoryDetailPage from '../pages/StoryDetailPage';
 import ProfilePage from '../user/profile';
-
-const ProtectedRoute = ({ children }) => {
-  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'; // 修复：正确获取登录状态
-  return isLoggedIn ? children : <Navigate to="/login" replace />;
-};
 
 
 const router = createBrowserRouter([
@@ -37,6 +35,14 @@ const router = createBrowserRouter([
     element: <NewsPage />
   },
   {
+    path: '/stories',
+    element: <StoryPage />
+  },
+  {
+    path: '/story/:id',
+    element: <StoryDetailPage />
+  },
+  {
     path: '/profile',
     element:(
       <ProtectedRoute> 
@@ -44,14 +50,6 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     )
   }
-  // {
-  //   path: '/HomePage',
-  //   element: (
-  //     <ProtectedRoute>
-  //       <HomePage />
-  //     </ProtectedRoute>
-  //   )
-  // }
 ]);
 
 export default router;

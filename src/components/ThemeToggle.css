@@ -17,7 +17,7 @@
 
 .theme-toggle.fixed {
   position: fixed;
-  top: 20px;
+  top: 80px;
   right: 20px;
   z-index: 1000;
 }
@@ -99,62 +99,40 @@
 }
 
 /* 隐藏和展开状态样式 */
-/* 在现有样式后添加以下内容 */
 
-/* 隐藏状态 - 只露出很小一部分 */
-.theme-toggle.collapsed {
-  transform: translateX(calc(100%)) !important;
-  opacity: 0.6;
+/* 固定定位的collapsed状态 - 按钮部分隐藏在屏幕右侧 */
+.theme-toggle.fixed.collapsed {
+  right: -30px; /* 只露出一小部分 */
+  opacity: 0.8;
   transition: all 0.3s ease;
 }
 
-.theme-toggle.collapsed:hover {
-  transform: translateX(calc(100%)) !important;
-  opacity: 0.3;
-}
-
-/* 展开状态 */
-.theme-toggle.expanded {
-  transform: translateX(0) !important;
+/* 固定定位的expanded状态 - 按钮完全显示 */
+.theme-toggle.fixed.expanded {
+  right: 20px;
   opacity: 1;
   transition: all 0.3s ease;
 }
 
-/* 添加指示器 */
-.theme-toggle.collapsed::before {
-  content: '';
-  position: absolute;
-  left: -6px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 20px;
-  background: currentColor;
-  border-radius: 2px;
-  opacity: 0.5;
-  transition: all 0.3s ease;
-}
-
-.theme-toggle.collapsed:hover::before {
-  opacity: 0.8;
-  height: 24px;
-}
-
-.theme-toggle.fixed.collapsed {
-  right: -36px; /* 只露出一小部分 */
-}
-
-.theme-toggle.fixed.expanded {
+/* 悬停时展开效果 */
+.theme-toggle.fixed.collapsed:hover {
   right: 20px;
+  opacity: 1;
 }
 
-/* 悬停效果增强 */
-.theme-toggle.collapsed:hover {
-  transform: translateX(calc(100% - 20px));
+/* 确保所有页面都使用collapsed状态作为默认状态 */
+.theme-toggle.fixed {
+  right: -30px;
+  opacity: 0.8;
 }
 
-/* 添加一个小的指示器 */
-.theme-toggle.collapsed::before {
+.theme-toggle.fixed:hover {
+  right: 20px;
+  opacity: 1;
+}
+
+/* 添加视觉指示器 */
+.theme-toggle.fixed.collapsed::before {
   content: '';
   position: absolute;
   left: -8px;
@@ -165,4 +143,9 @@
   background: currentColor;
   border-radius: 2px;
   opacity: 0.6;
+  transition: all 0.3s ease;
+}
+
+.theme-toggle.fixed.collapsed:hover::before {
+  opacity: 0;
 }

@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import { Link, useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import ThemeToggle from "../components/ThemeToggle";
+import NewsCard from "../components/NewsCard";
+import { eventConfig, eventStatusConfig } from '../utils/statusConfig';
 import "./HomePage.css";
 
 export default function HomePage() {
@@ -93,18 +95,7 @@ export default function HomePage() {
     },
   ];
 
-  // 所属事件配置
-  const eventConfig = {
-    "AI技术发展": { label: "AI技术发展", bgColor: "rgba(59, 130, 246, 0.9)" },
-    "气候变会议": { label: "气候变会议", bgColor: "rgba(16, 185, 129, 0.9)" },
-    "新能源汽车发展": { label: "新能源汽车发展", bgColor: "rgba(245, 158, 11, 0.9)" },
-  };
 
-  // 事件状态配置
-  const eventStatusConfig = {
-    ongoing: { label: "进行中", color: "#10b981", bgColor: "rgba(16, 185, 129, 0.1)" },
-    ended: { label: "已结束", color: "#6b7280", bgColor: "rgba(107, 114, 128, 0.1)" },
-  };
 
   const handlePrevNews = () => {
     setCurrentNewsIndex((prev) => 
@@ -237,29 +228,12 @@ export default function HomePage() {
               <div className="card-body">
                 <div className="news-grid">
                   {featuredNews.map((news) => (
-                    <div key={news.id} className="news-item" onClick={() => handleNewsClick(news.id)}>
-                      <div className="news-header">
-                        {/* 新闻分类标签 - 左上角 */}
-                        <div className="news-category-badge">
-                          {news.category}
-                        </div>
-                        {/* 所属事件标签 - 右上角 */}
-                        <div 
-                          className="news-event-badge"
-                          style={{
-                            backgroundColor: eventConfig[news.belonged_event]?.bgColor
-                          }}
-                        >
-                          {eventConfig[news.belonged_event]?.label}
-                        </div>
-                      </div>
-                      <h3 className="news-title">{news.title}</h3>
-                      <p className="news-summary">{news.summary}</p>
-                      <div className="news-meta">
-                        <span className="news-time">{news.published_at}</span>
-                        <span className="news-source">{news.source}</span>
-                      </div>
-                    </div>
+                    <NewsCard 
+                      key={news.id} 
+                      news={news} 
+                      eventConfig={eventConfig} 
+                      onNewsClick={handleNewsClick} 
+                    />
                   ))}
                 </div>
                 <div className="card-footer">
@@ -279,29 +253,12 @@ export default function HomePage() {
               <div className="card-body">
                 <div className="news-grid">
                   {featuredNews.map((news) => (
-                    <div key={news.id} className="news-item" onClick={() => handleNewsClick(news.id)}>
-                      <div className="news-header">
-                        {/* 新闻分类标签 - 左上角 */}
-                        <div className="news-category-badge">
-                          {news.category}
-                        </div>
-                        {/* 所属事件标签 - 右上角 */}
-                        <div 
-                          className="news-event-badge"
-                          style={{
-                            backgroundColor: eventConfig[news.belonged_event]?.bgColor
-                          }}
-                        >
-                          {eventConfig[news.belonged_event]?.label}
-                        </div>
-                      </div>
-                      <h3 className="news-title">{news.title}</h3>
-                      <p className="news-summary">{news.summary}</p>
-                      <div className="news-meta">
-                        <span className="news-time">{news.published_at}</span>
-                        <span className="news-source">{news.source}</span>
-                      </div>
-                    </div>
+                    <NewsCard 
+                      key={news.id} 
+                      news={news} 
+                      eventConfig={eventConfig} 
+                      onNewsClick={handleNewsClick} 
+                    />
                   ))}
                 </div>
                 <div className="card-footer">
