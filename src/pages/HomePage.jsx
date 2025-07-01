@@ -103,9 +103,6 @@ export default function HomePage() {
       status: "ended"
     },
   ];
-
-
-
   const handlePrevNews = () => {
     setCurrentNewsIndex((prev) => 
       prev === 0 ? featuredNews.length - 1 : prev - 1

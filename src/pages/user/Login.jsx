@@ -4,8 +4,8 @@ import { Form, Input, Button, Card, Row, Col, message, Space } from 'antd';
 import { UserOutlined, LockOutlined, EyeOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { useTheme } from '../contexts/ThemeContext';
-import ThemeToggle from '../components/ThemeToggle';
+import { useTheme } from '../../contexts/ThemeContext';
+import ThemeToggle from '../../components/ThemeToggle';
 import './Login.css';
 
 const Login = () => {

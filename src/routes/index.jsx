@@ -1,7 +1,7 @@
 import React from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import Login from '../user/Login';
-import Register from '../user/Register';
+import Login from '../pages/user/Login';
+import Register from '../pages/user/Register';
 import ProtectedRoute from '../components/ProtectedRoute';
 
 import HomePage from '../pages/HomePage';
@@ -10,7 +10,7 @@ import StoryPage from '../pages/StoryPage';
 import StoryDetailPage from '../pages/StoryDetailPage';
 import GlobalPage from '../pages/global';
 import RecommendPage from '../pages/RecommendPage';
-import ProfilePage from '../user/profile';
+import ProfilePage from '../pages/user/profile';
 import SearchPage from '../pages/search';
 
 

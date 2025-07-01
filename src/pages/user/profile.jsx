@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, Link } from "react-router-dom";
-import Header from '../components/Header';
-import ThemeToggle from '../components/ThemeToggle';
+import Header from '../../components/Header';
+import ThemeToggle from '../../components/ThemeToggle';
 import './profile.css';
 
 const ProfilePage = () => {

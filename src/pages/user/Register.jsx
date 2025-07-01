@@ -3,8 +3,8 @@ import { Form, Input, Button, Card, Row, Col, message, Space, Progress } from 'a
 import { UserOutlined, LockOutlined, MailOutlined, SafetyOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { useTheme } from '../contexts/ThemeContext';
-import ThemeToggle from '../components/ThemeToggle';
+import { useTheme } from '../../contexts/ThemeContext';
+import ThemeToggle from '../../components/ThemeToggle';
 import './Register.css';
 
 const Register = () => {
