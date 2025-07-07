@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
 import AdminHeader from '../../components/admin/AdminHeader';
-import { getAllEvents, updateEvent, deleteEvent, createEvent } from '../../api/adminApi';
-import { message, Modal, Form, Input, Select, Switch, DatePicker, Button, Table, Space, Tag, Popconfirm } from 'antd';
-import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined, CalendarOutlined } from '@ant-design/icons';
+import { getAllEvents, updateEvent, deleteEvent, createEvent, clearAllEvents } from '../../api/adminApi';
+import { message, Modal, Form, Input, Select, Switch, DatePicker, Button, Table, Space, Tag, Popconfirm, Row, Col } from 'antd';
+import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined, CalendarOutlined, ClearOutlined } from '@ant-design/icons';
 import moment from 'moment';
 import './Admin.css';
 import './EventManagement.css';
@@ -163,7 +163,19 @@ const EventManagement = () => {
     // 删除事件
     const handleDelete = async (id) => {
         try {
-            const response = await deleteEvent(id);
+            // 添加调试信息
+            console.log('准备删除事件 - ID:', id, '类型:', typeof id);
+            
+            // 确保ID是数字类型
+            const eventId = typeof id === 'string' ? parseInt(id, 10) : id;
+            if (isNaN(eventId) || eventId <= 0) {
+                message.error('无效的事件ID');
+                return;
+            }
+            
+            console.log('转换后的ID:', eventId, '类型:', typeof eventId);
+            
+            const response = await deleteEvent(eventId);
             if (response.code === 200) {
                 message.success('删除事件成功');
                 fetchEvents();
@@ -173,6 +185,25 @@ const EventManagement = () => {
         } catch (error) {
             console.error('删除失败:', error);
             message.error('删除失败，请重试');
+        }
+    };
+
+    // 清空所有事件
+    const handleClearAll = async () => {
+        try {
+            console.log('准备清空所有事件');
+            
+            const response = await clearAllEvents();
+            if (response.code === 200) {
+                const deletedCount = response.data?.deleted_count || 0;
+                message.success(`成功清空 ${deletedCount} 个事件`);
+                fetchEvents(); // 刷新列表
+            } else {
+                message.error(response.message || '清空事件失败');
+            }
+        } catch (error) {
+            console.error('清空事件失败:', error);
+            message.error('清空事件失败，请重试');
         }
     };
 
@@ -358,13 +389,32 @@ const EventManagement = () => {
                                 allowClear
                             />
 
-                            <Button
-                                type="primary"
-                                icon={<PlusOutlined />}
-                                onClick={() => openModal()}
-                            >
-                                新增事件
-                            </Button>
+                            <div className="action-buttons">
+                                <Button
+                                    type="primary"
+                                    icon={<PlusOutlined />}
+                                    onClick={() => openModal()}
+                                >
+                                    新增事件
+                                </Button>
+                                
+                                <Popconfirm
+                                    title="清空所有事件"
+                                    description="确定要清空所有事件吗？此操作无法撤销！"
+                                    onConfirm={handleClearAll}
+                                    okText="确定清空"
+                                    cancelText="取消"
+                                    okType="danger"
+                                >
+                                    <Button
+                                        danger
+                                        icon={<ClearOutlined />}
+                                        disabled={!events || events.length === 0}
+                                    >
+                                        清空事件
+                                    </Button>
+                                </Popconfirm>
+                            </div>
                         </div>
                     </div>
 

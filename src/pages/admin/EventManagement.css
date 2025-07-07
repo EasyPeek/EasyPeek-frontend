@@ -380,3 +380,66 @@ body.dark .ant-btn-link:hover {
         width: 100%;
     }
 }
+
+.admin-container {
+    min-height: 100vh;
+    background-color: var(--bg-color);
+}
+
+.admin-content {
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.filter-section {
+    margin-bottom: 24px;
+}
+
+.filter-row {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: space-between;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.event-title {
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 4px;
+}
+
+.event-description {
+    color: var(--text-color-secondary);
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.event-location {
+    color: var(--text-color-secondary);
+    font-size: 12px;
+}
+
+.event-time {
+    font-size: 12px;
+}
+
+.event-stats {
+    font-size: 12px;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}

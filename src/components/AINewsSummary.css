@@ -41,6 +41,12 @@
   font-size: 24px;
   margin-right: 12px;
   animation: pulse 2s infinite;
+  transition: all 0.3s ease;
+}
+
+.ai-summary-container.loading .ai-icon {
+  animation: none;
+  transform: none;
 }
 
 @keyframes pulse {
@@ -49,6 +55,26 @@
   }
   50% {
     transform: scale(1.1);
+  }
+}
+
+@keyframes loading-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
   }
 }
 
@@ -283,34 +309,202 @@
 
 /* 加载状态 */
 .ai-summary-container.loading {
-  background: linear-gradient(135deg, #cbd5e0 0%, #a0aec0 100%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  position: relative;
+  overflow: hidden;
 }
 
-.loading-spinner {
-  padding: 30px 20px;
+/* 重新启用我们需要的动画 */
+.ai-summary-container.loading .loading-dots .dot {
+  animation: bounce 1.4s infinite ease-in-out both !important;
+}
+
+.ai-summary-container.loading .progress-bar {
+  animation: progress 2s infinite !important;
+}
+
+.ai-summary-container.loading .loading-spinner p {
+  animation: fadeInOut 2s infinite !important;
+}
+
+/* 完全静态的加载内容 - 没有任何动画 v2.0 */
+.loading-content {
+  padding: 40px 20px;
   text-align: center;
   color: white;
+  position: relative;
+  z-index: 1;
+  /* 强制禁用所有动画和变换 */
+  animation: none !important;
+  transform: none !important;
 }
 
-.spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid rgba(255, 255, 255, 0.3);
-  border-top: 3px solid white;
+.loading-text {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 20px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.loading-indicator {
+  display: flex;
+  justify-content: center;
+}
+
+.progress-container {
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto;
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.progress-label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+}
+
+.progress-percentage {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 10px;
+  min-width: 35px;
+  text-align: center;
+}
+
+.progress-bar-bg {
+  width: 100%;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.1),
+    inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, 
+    #4facfe 0%, 
+    #00f2fe 50%, 
+    #4facfe 100%);
+  border-radius: 5px;
+  transition: width 0.8s ease-out;
+  box-shadow: 
+    0 0 12px rgba(79, 172, 254, 0.6),
+    0 0 24px rgba(0, 242, 254, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  position: relative;
+}
+
+.progress-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(255, 255, 255, 0.3) 50%, 
+    transparent 100%);
+  animation: shimmer 2s ease-in-out infinite;
+  border-radius: 5px;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+
+
+.loading-spinner {
+  padding: 40px 20px;
+  text-align: center;
+  color: white;
+  position: relative;
+  z-index: 1;
+}
+
+.loading-dots {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 20px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  background: white;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 12px;
+  animation: bounce 1.4s infinite ease-in-out both;
+  box-shadow: 0 2px 8px rgba(255, 255, 255, 0.3);
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+.dot:nth-child(1) { animation-delay: -0.32s; }
+.dot:nth-child(2) { animation-delay: -0.16s; }
+.dot:nth-child(3) { animation-delay: 0s; }
+
+@keyframes bounce {
+  0%, 80%, 100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.loading-progress {
+  width: 200px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  margin: 16px auto 0;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, white, rgba(255, 255, 255, 0.8), white);
+  border-radius: 2px;
+  animation: progress 2s infinite;
+}
+
+@keyframes progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 .loading-spinner p {
   margin: 0;
-  font-size: 14px;
+  font-size: 16px;
+  font-weight: 500;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  animation: fadeInOut 2s infinite;
+}
+
+@keyframes fadeInOut {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
 }
 
 /* 错误状态 */
@@ -400,6 +594,36 @@
   .keyword-tag {
     padding: 3px 10px;
     font-size: 11px;
+  }
+
+  .loading-content {
+    padding: 30px 16px;
+  }
+
+  .loading-text {
+    font-size: 14px;
+  }
+
+  .progress-container {
+    max-width: 280px;
+  }
+
+  .progress-header {
+    margin-bottom: 6px;
+  }
+
+  .progress-label {
+    font-size: 12px;
+  }
+
+  .progress-percentage {
+    font-size: 11px;
+    padding: 2px 6px;
+    min-width: 30px;
+  }
+
+  .progress-bar-bg {
+    height: 8px;
   }
 }
 

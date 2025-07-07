@@ -212,6 +212,13 @@ export const deleteEvent = async (id) => {
     });
 };
 
+// 清空所有事件
+export const clearAllEvents = async () => {
+    return await apiRequest('/events', {
+        method: 'DELETE'
+    });
+};
+
 // ==================== 新闻管理 ====================
 export const getAllNews = async (params = {}) => {
     const queryParams = new URLSearchParams();
@@ -382,6 +389,7 @@ export default {
     createEvent,
     updateEvent,
     deleteEvent,
+    clearAllEvents,
 
     // 新闻管理
     getAllNews,

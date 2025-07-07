@@ -7,12 +7,43 @@ const AINewsSummary = ({ newsId, news, isEvent = false }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [loadingStage, setLoadingStage] = useState(0);
 
   useEffect(() => {
     if (newsId) {
       loadAnalysis();
     }
   }, [newsId]);
+
+  // 加载阶段管理
+  useEffect(() => {
+    let stageTimer;
+    if (loading) {
+      const stages = [
+        '正在连接AI服务...',
+        '分析文本内容...',
+        '提取关键信息...',
+        '生成智能摘要...',
+        '完善分析结果...'
+      ];
+      
+      let currentStage = 0;
+      setLoadingStage(0);
+      
+      stageTimer = setInterval(() => {
+        currentStage = (currentStage + 1) % stages.length;
+        setLoadingStage(currentStage);
+      }, 2000);
+    } else {
+      setLoadingStage(0);
+    }
+
+    return () => {
+      if (stageTimer) {
+        clearInterval(stageTimer);
+      }
+    };
+  }, [loading]);
 
   const loadAnalysis = async () => {
     try {
@@ -97,15 +128,41 @@ const AINewsSummary = ({ newsId, news, isEvent = false }) => {
   };
 
   if (loading) {
+    const stages = [
+      '正在连接AI服务...',
+      '分析文本内容...',
+      '提取关键信息...',
+      '生成智能摘要...',
+      '完善分析结果...'
+    ];
+
+    const progressSteps = [
+      '🚀 初始化',
+      '📄 内容分析',
+      '🔍 信息提取',
+      '✨ 摘要生成',
+      '🎯 结果优化'
+    ];
+
     return (
       <div className="ai-summary-container loading">
         <div className="ai-header">
           <div className="ai-icon">🤖</div>
           <h3>AI 智能分析</h3>
         </div>
-        <div className="loading-spinner">
-          <div className="spinner"></div>
-          <p>正在生成智能分析...</p>
+        <div className="loading-content">
+          <div className="loading-text">{stages[loadingStage]}</div>
+          <div className="loading-indicator">
+            <div className="progress-container">
+              <div className="progress-header">
+                <span className="progress-label">{progressSteps[loadingStage]}</span>
+                <span className="progress-percentage">{Math.round((loadingStage + 1) * 20)}%</span>
+              </div>
+              <div className="progress-bar-bg">
+                <div className="progress-bar-fill" style={{width: `${(loadingStage + 1) * 20}%`}}></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
