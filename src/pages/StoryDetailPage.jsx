@@ -20,6 +20,8 @@ const StoryDetailPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [newsPerPage] = useState(5); // 每页显示5条新闻
   const [eventStats, setEventStats] = useState(null);
+  const [lastStatsUpdate, setLastStatsUpdate] = useState(null);
+  const [lastNewsUpdate, setLastNewsUpdate] = useState(null);
   
   // 关注功能相关状态
   const [isFollowing, setIsFollowing] = useState(false);
@@ -84,6 +86,7 @@ const StoryDetailPage = () => {
       
       if (data.code === 200) {
         setNewsTimeline(data.data || []);
+        setLastNewsUpdate(new Date()); // 记录新闻更新时间
       } else {
         throw new Error(data.message || '获取相关新闻失败');
       }
@@ -105,6 +108,7 @@ const StoryDetailPage = () => {
         const data = await response.json();
         if (data.code === 200) {
           setEventStats(data.data);
+          setLastStatsUpdate(new Date()); // 记录更新时间
         }
       }
     } catch (err) {
@@ -112,8 +116,8 @@ const StoryDetailPage = () => {
     }
   };
 
-  // 数据格式转换函数
-  const formatStoryData = (eventData) => {
+  // 数据格式转换函数 - 添加依赖参数确保动态更新
+  const formatStoryData = (eventData, newsTimelineLength, statsData) => {
     if (!eventData) return null;
 
     // 解析标签
@@ -129,12 +133,20 @@ const StoryDetailPage = () => {
       tags = [];
     }
 
-    // 评估重要性
+    // 评估重要性 - 优先使用统计数据，fallback到事件数据
     const getImportance = (hotnessScore, viewCount) => {
       if (hotnessScore >= 8 || viewCount >= 1000) return '高';
       if (hotnessScore >= 5 || viewCount >= 500) return '中';
       return '低';
     };
+
+    // 使用最新的统计数据
+    const currentStats = statsData || {};
+    const hotnessScore = currentStats.hotness_score ?? eventData.hotness_score;
+    const viewCount = currentStats.view_count ?? eventData.view_count;
+    const likeCount = currentStats.like_count ?? eventData.like_count;
+    const commentCount = currentStats.comment_count ?? eventData.comment_count;
+    const shareCount = currentStats.share_count ?? eventData.share_count;
 
     return {
       id: eventData.id,
@@ -142,17 +154,17 @@ const StoryDetailPage = () => {
       description: eventData.description,
       category: eventData.category,
       status: eventData.status,
-      importance: getImportance(eventData.hotness_score, eventData.view_count),
+      importance: getImportance(hotnessScore, viewCount),
       startDate: eventData.start_time,
       lastUpdate: eventData.updated_at,
-      totalNews: newsTimeline.length, // 从相关新闻数量获取
+      totalNews: newsTimelineLength, // 使用传入的新闻数量确保动态更新
       tags: tags,
       summary: eventData.content || eventData.description,
-      hotnessScore: eventData.hotness_score,
-      viewCount: eventData.view_count,
-      likeCount: eventData.like_count,
-      commentCount: eventData.comment_count,
-      shareCount: eventData.share_count
+      hotnessScore: hotnessScore,
+      viewCount: viewCount,
+      likeCount: likeCount,
+      commentCount: commentCount,
+      shareCount: shareCount
     };
   };
 
@@ -227,8 +239,8 @@ const StoryDetailPage = () => {
       return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
     });
 
-  // 格式化的故事数据
-  const formattedStory = formatStoryData(story);
+  // 格式化的故事数据 - 传入依赖参数确保动态更新
+  const formattedStory = formatStoryData(story, newsTimeline.length, eventStats);
 
   // 分页逻辑
   const totalPages = Math.ceil(filteredAndSortedNews.length / newsPerPage);
@@ -358,11 +370,17 @@ const StoryDetailPage = () => {
     }
   };
 
-  // 添加页面焦点时重新检查状态
+  // 添加页面焦点时重新检查状态和刷新数据
   useEffect(() => {
     const handleFocus = () => {
-      if (isLoggedIn && id) {
-        checkFollowStatus();
+      if (id) {
+        // 刷新事件统计信息以获取最新数据
+        fetchEventStats();
+        fetchEventNews(); // 也刷新新闻时间线
+        
+        if (isLoggedIn) {
+          checkFollowStatus();
+        }
       }
     };
 
@@ -398,6 +416,9 @@ const StoryDetailPage = () => {
                 fetchEventDetail();
                 fetchEventNews();
                 fetchEventStats();
+                if (isLoggedIn) {
+                  checkFollowStatus(); // 重新检查关注状态
+                }
               }}
               className="back-btn"
               style={{ marginRight: '16px' }}
@@ -509,10 +530,19 @@ const StoryDetailPage = () => {
                 <span className="stat-label">点赞数</span>
               </div>
               <div className="stat-item">
+                <span className="stat-number">{formattedStory.commentCount || 0}</span>
+                <span className="stat-label">评论数</span>
+              </div>
+              <div className="stat-item">
                 <span className="stat-number">{formattedStory.tags.length}</span>
                 <span className="stat-label">相关标签</span>
               </div>
             </div>
+            {eventStats && lastStatsUpdate && (
+              <div style={{ fontSize: '12px', color: '#666', textAlign: 'center', marginTop: '8px' }}>
+                统计数据更新时间: {lastStatsUpdate.toLocaleTimeString('zh-CN')}
+              </div>
+            )}
             
             <div className="story-tags-section">
               <h4>相关标签</h4>
@@ -539,24 +569,67 @@ const StoryDetailPage = () => {
                 </div>
               )}
             </div>
-            <button 
-              onClick={() => {
-                fetchEventNews();
-                fetchEventStats();
-              }}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
-              disabled={newsLoading}
-            >
-              {newsLoading ? '刷新中...' : '🔄 刷新新闻'}
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                onClick={() => {
+                  fetchEventDetail(); // 同时刷新事件基本信息
+                  fetchEventNews();
+                  fetchEventStats();
+                }}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+                disabled={newsLoading || loading}
+              >
+                {(newsLoading || loading) ? '刷新中...' : '🔄 刷新数据'}
+              </button>
+              
+              <button 
+                onClick={async () => {
+                  try {
+                    // 手动更新事件统计
+                    const response = await fetch(`http://localhost:8080/api/v1/events/${id}/stats/update`, {
+                      method: 'POST',
+                      headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                        'Content-Type': 'application/json'
+                      }
+                    });
+                    
+                    if (response.ok) {
+                      showNotification('事件统计已更新', 'success');
+                      // 刷新所有数据
+                      fetchEventDetail();
+                      fetchEventNews();
+                      fetchEventStats();
+                    } else {
+                      showNotification('更新统计失败，可能需要管理员权限', 'warning');
+                    }
+                  } catch (err) {
+                    console.error('更新统计失败:', err);
+                    showNotification('更新统计失败', 'error');
+                  }
+                }}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#52c41a',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+                disabled={newsLoading || loading}
+              >
+                📊 更新统计
+              </button>
+            </div>
           </div>
           <div className="controls-row">
             <div className="sort-control">
@@ -582,8 +655,13 @@ const StoryDetailPage = () => {
                 <option value="minor">一般事件</option>
               </select>
             </div>
-            <div className="news-count-info" style={{ marginLeft: '20px', color: '#6b7280' }}>
-              共找到 {filteredAndSortedNews.length} 条相关新闻
+            <div className="news-count-info" style={{ marginLeft: '20px', color: '#6b7280', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+              <span>共找到 {filteredAndSortedNews.length} 条相关新闻</span>
+              {lastNewsUpdate && (
+                <span style={{ fontSize: '12px', opacity: '0.8' }}>
+                  新闻更新时间: {lastNewsUpdate.toLocaleTimeString('zh-CN')}
+                </span>
+              )}
             </div>
           </div>
         </div>

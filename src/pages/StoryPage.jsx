@@ -147,14 +147,14 @@ export default function StoryPage() {
       title: event.title,
       description: event.description,
       category: event.category,
-      newsCount: 0, // 需要单独获取相关新闻数量
+      newsCount: event.news_count || 0, // 使用后端返回的新闻数量
       startDate: new Date(event.start_time).toISOString().split('T')[0],
       lastUpdate: new Date(event.updated_at).toISOString().split('T')[0],
       status: event.status === '进行中' ? 'ongoing' : event.status === '已结束' ? 'ended' : 'unknown',
       importance: getImportance(event.hotness_score, event.view_count),
       tags: tags,
       thumbnail: categoryThumbnails[event.category] || '📰',
-      timeline: [], // 时间线数据需要从事件内容中解析或单独获取
+      timeline: [], // 时间线数据可以从新闻数量推断
       hotnessScore: event.hotness_score,
       viewCount: event.view_count,
       likeCount: event.like_count,
@@ -189,21 +189,7 @@ export default function StoryPage() {
     }
   }, [searchQuery, selectedCategory, sortBy]);
 
-  // 获取事件相关新闻数量（可选功能）
-  const fetchEventNewsCount = async (eventId) => {
-    try {
-      const response = await fetch(`http://localhost:8080/api/v1/events/${eventId}/news`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.code === 200) {
-          return data.data.length || 0;
-        }
-      }
-    } catch (err) {
-      console.warn('获取事件新闻数量失败:', err);
-    }
-    return 0;
-  };
+  // 新闻数量现在直接从事件API获取，无需单独请求
 
 
 
@@ -379,6 +365,15 @@ export default function StoryPage() {
                               <span className="mini-event">事件开始</span>
                             </div>
                           </div>
+                          {story.newsCount > 0 && (
+                            <div className="mini-timeline-item">
+                              <div className="mini-timeline-dot news"></div>
+                              <div className="mini-timeline-content">
+                                <span className="mini-date">进行中</span>
+                                <span className="mini-event">{story.newsCount} 条相关新闻</span>
+                              </div>
+                            </div>
+                          )}
                           <div className="mini-timeline-item">
                             <div className="mini-timeline-dot"></div>
                             <div className="mini-timeline-content">

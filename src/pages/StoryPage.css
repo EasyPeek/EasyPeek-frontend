@@ -641,6 +641,11 @@ body.dark .mini-timeline::before {
   box-shadow: 0 2px 8px rgba(79, 70, 229, 0.4);
 }
 
+.mini-timeline-dot.news {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+}
+
 body.dark .mini-timeline-dot {
   background: rgba(139, 92, 246, 0.8);
   border-color: rgba(30, 30, 46, 0.9);
@@ -649,6 +654,11 @@ body.dark .mini-timeline-dot {
 body.dark .mini-timeline-dot.current {
   background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%);
   box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
+}
+
+body.dark .mini-timeline-dot.news {
+  background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+  box-shadow: 0 2px 8px rgba(52, 211, 153, 0.4);
 }
 
 .mini-timeline-content {
