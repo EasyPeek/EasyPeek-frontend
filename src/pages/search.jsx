@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { safeDisplayText, safeDisplayTitle } from '../utils/htmlUtils';
 import { getCategoryNames, getCategoryConfig } from '../utils/statusConfig';
+import { newsApi } from '../api/newsApi';
 import Header from '../components/Header';
 import ThemeToggle from '../components/ThemeToggle';
 import AISmartSearch from '../components/AISmartSearch';
@@ -226,33 +227,119 @@ const SearchPage = () => {
   }, [searchQuery, selectedCategory, sortBy, timeFilter]);
 
   // 处理搜索
-  const handleSearch = () => {
+  const handleSearch = async () => {
     setCurrentPage(1);
+    setLoading(true);
+    
+    try {
+      await performSearch(searchQuery, 'normal');
+    } catch (error) {
+      console.error('搜索失败:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // 处理智能搜索
-  const handleSmartSearch = (searchParams) => {
+  const handleSmartSearch = async (searchParams) => {
     console.log('智能搜索参数:', searchParams);
     setSearchQuery(searchParams.query);
     setCurrentPage(1);
+    setLoading(true);
     
-    // 根据搜索模式处理不同的搜索逻辑
-    if (searchParams.mode === 'semantic') {
-      // 语义搜索逻辑 - 这里可以调用后端的语义搜索API
-      console.log('执行语义搜索:', searchParams);
-    } else if (searchParams.mode === 'keywords') {
-      // 关键词搜索逻辑
-      console.log('执行关键词搜索:', searchParams);
-    } else {
-      // 普通搜索逻辑
-      console.log('执行普通搜索:', searchParams);
+    try {
+      // 根据搜索模式处理不同的搜索逻辑
+      if (searchParams.mode === 'semantic') {
+        // 语义搜索逻辑 - 这里可以调用后端的语义搜索API
+        console.log('执行语义搜索:', searchParams);
+        await performSearch(searchParams.query, searchParams.mode);
+      } else if (searchParams.mode === 'keywords') {
+        // 关键词搜索逻辑
+        console.log('执行关键词搜索:', searchParams);
+        await performSearch(searchParams.query, searchParams.mode);
+      } else {
+        // 普通搜索逻辑
+        console.log('执行普通搜索:', searchParams);
+        await performSearch(searchParams.query, searchParams.mode);
+      }
+    } catch (error) {
+      console.error('搜索失败:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 执行实际的搜索
+  const performSearch = async (query, mode = 'normal') => {
+    try {
+      const response = await newsApi.searchNews(query, 1, 50, mode); // 搜索更多结果，传递搜索模式
+      
+      if (response.code === 200 && response.data) {
+        // 转换数据格式以适配搜索页面
+        const transformedData = response.data.map(news => ({
+          id: news.id,
+          title: news.title,
+          summary: news.summary,
+          category: news.category,
+          timeline: `${Math.floor(Math.random() * 10) + 1}个关键节点`, // 模拟数据
+          followers: news.view_count || Math.floor(Math.random() * 2000) + 100,
+          lastUpdate: "2小时前", // 模拟数据
+          relevance: Math.floor(Math.random() * 30) + 70, // 模拟相关性分数
+          published_at: news.published_at,
+          source: news.source,
+          author: news.author,
+          image_url: news.image_url,
+          view_count: news.view_count,
+          like_count: news.like_count,
+          comment_count: news.comment_count,
+        }));
+        
+        // 根据搜索模式调整相关性计算
+        if (mode === 'keywords') {
+          // 关键词搜索：提高精确匹配的相关性
+          transformedData.forEach(item => {
+            const queryLower = query.toLowerCase();
+            const titleMatch = item.title.toLowerCase().includes(queryLower);
+            const summaryMatch = item.summary && item.summary.toLowerCase().includes(queryLower);
+            
+            if (titleMatch) {
+              item.relevance = Math.min(item.relevance + 20, 100);
+            }
+            if (summaryMatch) {
+              item.relevance = Math.min(item.relevance + 10, 100);
+            }
+          });
+        } else if (mode === 'semantic') {
+          // 语义搜索：模拟语义匹配分数
+          transformedData.forEach(item => {
+            item.relevance = Math.floor(Math.random() * 40) + 60; // 语义搜索相关性
+          });
+        }
+        
+        setSearchResults(transformedData);
+      } else {
+        console.warn('搜索返回空结果');
+        setSearchResults([]);
+      }
+    } catch (error) {
+      console.error('搜索API调用失败:', error);
+      setSearchResults([]);
     }
   };
 
   // 处理关键词点击
-  const handleKeywordClick = (keyword) => {
+  const handleKeywordClick = async (keyword) => {
     setSearchQuery(keyword);
     setCurrentPage(1);
+    setLoading(true);
+    
+    try {
+      await performSearch(keyword, 'keywords');
+    } catch (error) {
+      console.error('关键词搜索失败:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // 处理分类点击

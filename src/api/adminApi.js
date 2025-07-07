@@ -219,6 +219,20 @@ export const clearAllEvents = async () => {
     });
 };
 
+// 手动更新事件 - 重新生成事件
+export const generateEvents = async () => {
+    return await apiRequest('/ai-config/generate-events', {
+        method: 'POST'
+    });
+};
+
+// 触发批量AI分析
+export const triggerBatchAIAnalysis = async () => {
+    return await apiRequest('/ai-config/batch-analyze', {
+        method: 'POST'
+    });
+};
+
 // ==================== 新闻管理 ====================
 export const getAllNews = async (params = {}) => {
     const queryParams = new URLSearchParams();
@@ -390,6 +404,8 @@ export default {
     updateEvent,
     deleteEvent,
     clearAllEvents,
+    generateEvents,
+    triggerBatchAIAnalysis,
 
     // 新闻管理
     getAllNews,

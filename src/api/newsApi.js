@@ -57,8 +57,15 @@ export const newsApi = {
   },
 
   // 搜索新闻
-  searchNews: async (query, page = 1, size = 10) => {
-    const response = await fetch(`${API_BASE_URL}/news/search?query=${encodeURIComponent(query)}&page=${page}&size=${size}`);
+  searchNews: async (query, page = 1, size = 10, mode = 'normal') => {
+    const params = new URLSearchParams({
+      query: query,
+      page: page.toString(),
+      size: size.toString(),
+      mode: mode
+    });
+    
+    const response = await fetch(`${API_BASE_URL}/news/search?${params}`);
     if (!response.ok) {
       throw new Error('搜索新闻失败');
     }

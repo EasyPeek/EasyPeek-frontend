@@ -23,7 +23,7 @@ const NewsManagement = () => {
     const [editingNews, setEditingNews] = useState(null);
     const [pagination, setPagination] = useState({
         current: 1,
-        pageSize: 10,
+        pageSize: 20,
         total: 0
     });
 
@@ -53,7 +53,7 @@ const NewsManagement = () => {
                 setNews(response.data || []);
                 setPagination(prev => ({
                     ...prev,
-                    total: response.data.total || 0
+                    total: response.total || 0
                 }));
             } else {
                 message.error(response.message || '获取新闻列表失败');
@@ -323,6 +323,7 @@ const NewsManagement = () => {
                             total: pagination.total,
                             showSizeChanger: true,
                             showQuickJumper: true,
+                            pageSizeOptions: ['10', '20', '50', '100'],
                             showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 条`
                         }}
                         onChange={handleTableChange}

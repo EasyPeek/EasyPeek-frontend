@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Button, message } from 'antd';
+import { SettingOutlined, UserOutlined } from '@ant-design/icons';
 import Header from '../components/Header';
 import ThemeToggle from '../components/ThemeToggle';
 import NewsCard from '../components/NewsCard';
 import AINewsSummary from '../components/AINewsSummary';
+import UserPreferencesModal from '../components/UserPreferencesModal';
 import { eventConfig, getCategoryNames } from '../utils/statusConfig';
+import { getUserProfile } from '../api/userApi';
+import { newsApi } from '../api/newsApi';
 
 import './RecommendPage.css';
 
@@ -17,16 +22,63 @@ export default function RecommendPage() {
   const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [eventNews, setEventNews] = useState([]);
+  const [preferencesModalVisible, setPreferencesModalVisible] = useState(false);
+  const [userPreferences, setUserPreferences] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const navigate = useNavigate();
 
   // 可选择的分类列表
   const categories = ['all', ...getCategoryNames()];
 
+  // 检查用户登录状态和加载偏好
+  useEffect(() => {
+    checkUserLoginAndPreferences();
+  }, []);
+
+  const checkUserLoginAndPreferences = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        setIsLoggedIn(true);
+        const userProfile = await getUserProfile();
+        if (userProfile && userProfile.interests) {
+          try {
+            const preferences = JSON.parse(userProfile.interests);
+            setUserPreferences(preferences);
+          } catch (e) {
+            console.log('解析用户偏好失败');
+          }
+        }
+      }
+    } catch (error) {
+      console.log('用户未登录或获取信息失败');
+      setIsLoggedIn(false);
+    }
+  };
+
   // 获取推荐理由
-  const getRecommendationReason = (type, category) => {
+  const getRecommendationReason = (type, category, news) => {
     switch (type) {
       case 'personalized':
-        return '基于您的阅读偏好';
+        if (userPreferences && isLoggedIn) {
+          // 基于用户偏好生成更具体的推荐理由
+          const matchedCategories = userPreferences.categories?.filter(cat => 
+            news.category === cat || news.title?.includes(cat) || news.summary?.includes(cat)
+          ) || [];
+          
+          const matchedKeywords = userPreferences.keywords?.filter(keyword => 
+            news.title?.includes(keyword) || news.summary?.includes(keyword) || news.content?.includes(keyword)
+          ) || [];
+          
+          if (matchedCategories.length > 0) {
+            return `您关注的${matchedCategories[0]}分类`;
+          } else if (matchedKeywords.length > 0) {
+            return `包含您感兴趣的"${matchedKeywords[0]}"`;
+          } else {
+            return '基于您的阅读偏好';
+          }
+        }
+        return '个性化推荐';
       case 'hot':
         return '热门推荐';
       case 'category':
@@ -34,6 +86,61 @@ export default function RecommendPage() {
       default:
         return '智能推荐';
     }
+  };
+
+  // 过滤新闻基于用户偏好
+  const filterNewsByPreferences = (newsList) => {
+    if (!userPreferences || !isLoggedIn || recommendationType !== 'personalized') {
+      return newsList;
+    }
+
+    return newsList.filter(news => {
+      // 排除用户不感兴趣的关键词
+      if (userPreferences.excludeKeywords?.length > 0) {
+        const hasExcludedKeyword = userPreferences.excludeKeywords.some(keyword =>
+          news.title?.includes(keyword) || 
+          news.summary?.includes(keyword) || 
+          news.content?.includes(keyword)
+        );
+        if (hasExcludedKeyword) return false;
+      }
+
+      return true;
+    });
+  };
+
+  // 根据用户偏好排序新闻
+  const sortNewsByPreferences = (newsList) => {
+    if (!userPreferences || !isLoggedIn || recommendationType !== 'personalized') {
+      return newsList;
+    }
+
+    return newsList.sort((a, b) => {
+      let scoreA = 0;
+      let scoreB = 0;
+
+      // 分类匹配得分
+      if (userPreferences.categories?.includes(a.category)) scoreA += 10;
+      if (userPreferences.categories?.includes(b.category)) scoreB += 10;
+
+      // 关键词匹配得分
+      userPreferences.keywords?.forEach(keyword => {
+        if (a.title?.includes(keyword) || a.summary?.includes(keyword)) scoreA += 5;
+        if (b.title?.includes(keyword) || b.summary?.includes(keyword)) scoreB += 5;
+      });
+
+      // 来源匹配得分
+      if (userPreferences.sources?.includes(a.source)) scoreA += 3;
+      if (userPreferences.sources?.includes(b.source)) scoreB += 3;
+
+      // 热度权重
+      if (userPreferences.enableTrendingBoost) {
+        scoreA += (a.view_count || 0) / 1000;
+        scoreB += (b.view_count || 0) / 1000;
+      }
+
+      return scoreB - scoreA;
+    });
   };
 
   // 获取事件数据
@@ -164,15 +271,26 @@ export default function RecommendPage() {
         let apiUrl = 'http://localhost:8080/api/v1/news';
         const params = new URLSearchParams();
         params.append('page', '1');
-        params.append('limit', '20');
+        params.append('size', '50'); // 获取更多新闻用于个性化过滤
         
         if (timeRange !== 'all') {
           params.append('time_range', timeRange);
         }
         
+        // 个性化推荐模式下，如果用户有偏好分类，优先获取相关分类
+        if (recommendationType === 'personalized' && userPreferences?.categories?.length > 0 && isLoggedIn) {
+          // 如果用户有偏好分类，混合获取偏好分类和热门新闻
+          const preferredCategories = userPreferences.categories.slice(0, 3); // 取前3个偏好分类
+          params.append('categories', preferredCategories.join(','));
+        }
+        
         switch (recommendationType) {
           case 'personalized':
-            params.append('sort', 'personalized');
+            if (isLoggedIn) {
+              params.append('sort', 'personalized');
+            } else {
+              params.append('sort', 'hot'); // 未登录用户显示热门
+            }
             break;
           case 'hot':
             apiUrl += '/hot';
@@ -186,19 +304,59 @@ export default function RecommendPage() {
         
         apiUrl += `?${params.toString()}`;
         
-        const response = await fetch(apiUrl);
+        // 获取认证token
+        const token = localStorage.getItem('token');
+        const headers = {
+          'Content-Type': 'application/json',
+        };
+        
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        const response = await fetch(apiUrl, {
+          method: 'GET',
+          headers: headers
+        });
         const result = await response.json();
         
         if (result.code === 200 && result.data) {
-          const newsData = Array.isArray(result.data) ? result.data : result.data.news || [];
+          let newsData = Array.isArray(result.data) ? result.data : result.data.news || [];
           
-          // 处理推荐理由
+          // 后端已经完成了个性化推荐排序，前端只需要处理推荐理由
           const processedData = newsData.slice(0, 12).map(news => ({
             ...news,
-            reason: getRecommendationReason(recommendationType, selectedCategory)
+            reason: getRecommendationReason(recommendationType, selectedCategory, news)
           }));
           
           setRecommendations(processedData);
+          
+          // 调试信息
+          if (recommendationType === 'personalized' && isLoggedIn) {
+            console.log('🎯 个性化推荐API调用成功');
+            console.log('📊 推荐结果:', processedData.length, '条新闻');
+            console.log('⚙️ 用户偏好:', userPreferences);
+            console.log('🔗 API URL:', apiUrl);
+            console.log('📝 API参数:', Object.fromEntries(params));
+            
+            // 检查推荐结果是否符合用户偏好
+            if (userPreferences?.categories?.length > 0) {
+              const matchedNews = processedData.filter(news => 
+                userPreferences.categories.includes(news.category)
+              );
+              console.log('✅ 分类匹配的新闻:', matchedNews.length, '条');
+            }
+            
+            if (userPreferences?.keywords?.length > 0) {
+              const keywordMatchedNews = processedData.filter(news => 
+                userPreferences.keywords.some(keyword => 
+                  news.title?.toLowerCase().includes(keyword.toLowerCase()) ||
+                  news.summary?.toLowerCase().includes(keyword.toLowerCase())
+                )
+              );
+              console.log('🔍 关键词匹配的新闻:', keywordMatchedNews.length, '条');
+            }
+          }
         }
       } catch (err) {
         console.error('获取推荐数据失败:', err);
@@ -231,7 +389,7 @@ export default function RecommendPage() {
     // 同时获取推荐数据和事件数据
     fetchRecommendations();
     fetchEvents();
-  }, [recommendationType, selectedCategory, timeRange]);
+  }, [recommendationType, selectedCategory, timeRange, userPreferences, isLoggedIn]);
 
   const handleNewsClick = (newsId) => {
     navigate(`/newspage/${newsId}`);
@@ -249,7 +407,10 @@ export default function RecommendPage() {
   const getCurrentTitle = () => {
     switch (recommendationType) {
       case 'personalized':
-        return '个性化推荐';
+        if (isLoggedIn) {
+          return userPreferences ? '个性化推荐' : '智能推荐（请设置偏好）';
+        }
+        return '热门推荐（请登录使用个性化）';
       case 'hot':
         return '热门推荐';
       case 'category':
@@ -257,6 +418,27 @@ export default function RecommendPage() {
       default:
         return '个性化推荐';
     }
+  };
+
+  // 处理偏好保存
+  const handlePreferencesSaved = (newPreferences) => {
+    setUserPreferences(newPreferences);
+    message.success('个性化偏好已更新，正在为您重新推荐内容');
+    
+    // 立即重新加载推荐内容
+    setLoading(true);
+    // 触发useEffect重新执行
+    // 这里不需要显式调用，因为userPreferences变化会触发useEffect
+  };
+
+  // 显示偏好设置模态框
+  const showPreferencesModal = () => {
+    if (!isLoggedIn) {
+      message.warning('请先登录后再设置个性化偏好');
+      navigate('/login');
+      return;
+    }
+    setPreferencesModalVisible(true);
   };
 
   if (loading) {
@@ -287,6 +469,42 @@ export default function RecommendPage() {
           <div className="settings-header">
             <h3 className="settings-title">智能筛选</h3>
             <span className="settings-subtitle">调整推荐偏好，获得更精准的内容</span>
+            {/* 个性化偏好设置按钮 */}
+            <div className="settings-actions">
+              {recommendationType === 'personalized' && isLoggedIn && (
+                <div className="personalization-status">
+                  {userPreferences ? (
+                    <span className="status-active">
+                      ✓ 个性化已启用
+                    </span>
+                  ) : (
+                    <span className="status-inactive">
+                      ⚠ 请设置偏好
+                    </span>
+                  )}
+                </div>
+              )}
+              <Button
+                type="primary"
+                icon={<SettingOutlined />}
+                onClick={showPreferencesModal}
+                size="small"
+                style={{ marginLeft: 'auto' }}
+              >
+                {isLoggedIn ? '个性化设置' : '登录设置偏好'}
+              </Button>
+              {recommendationType === 'personalized' && !isLoggedIn && (
+                <Button
+                  type="default"
+                  icon={<UserOutlined />}
+                  onClick={() => navigate('/login')}
+                  size="small"
+                  style={{ marginLeft: 8 }}
+                >
+                  登录
+                </Button>
+              )}
+            </div>
           </div>
           
           <div className="settings-content">
@@ -534,6 +752,13 @@ export default function RecommendPage() {
           </div>
         </div>
       </div>
+      
+      {/* 个性化偏好设置模态框 */}
+      <UserPreferencesModal
+        visible={preferencesModalVisible}
+        onClose={() => setPreferencesModalVisible(false)}
+        onSave={handlePreferencesSaved}
+      />
       
       <ThemeToggle className="fixed" />
     </div>

@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
 import AdminHeader from '../../components/admin/AdminHeader';
-import { getAllEvents, updateEvent, deleteEvent, createEvent, clearAllEvents } from '../../api/adminApi';
+import { getAllEvents, updateEvent, deleteEvent, createEvent, clearAllEvents, generateEvents, triggerBatchAIAnalysis } from '../../api/adminApi';
 import { message, Modal, Form, Input, Select, Switch, DatePicker, Button, Table, Space, Tag, Popconfirm, Row, Col } from 'antd';
-import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined, CalendarOutlined, ClearOutlined } from '@ant-design/icons';
+import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined, CalendarOutlined, ClearOutlined, ReloadOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import moment from 'moment';
 import './Admin.css';
 import './EventManagement.css';
@@ -207,6 +207,49 @@ const EventManagement = () => {
         }
     };
 
+    // 手动更新事件 - 重新生成事件
+    const handleGenerateEvents = async () => {
+        try {
+            console.log('准备重新生成事件');
+            setLoading(true);
+            
+            const response = await generateEvents();
+            if (response.code === 200) {
+                const generatedCount = response.data?.generated_count || 0;
+                message.success(`成功生成 ${generatedCount} 个事件`);
+                fetchEvents(); // 刷新列表
+            } else {
+                message.error(response.message || '事件生成失败');
+            }
+        } catch (error) {
+            console.error('事件生成失败:', error);
+            message.error('事件生成失败，请重试');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // 触发AI分析
+    const handleTriggerAIAnalysis = async () => {
+        try {
+            console.log('准备触发AI分析');
+            setLoading(true);
+            
+            const response = await triggerBatchAIAnalysis();
+            if (response.code === 200) {
+                const processedCount = response.data?.processed_count || 0;
+                message.success(`AI分析完成，处理了 ${processedCount} 条新闻`);
+            } else {
+                message.error(response.message || 'AI分析失败');
+            }
+        } catch (error) {
+            console.error('AI分析失败:', error);
+            message.error('AI分析失败，请重试');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // 获取事件状态颜色
     const getStatusColor = (status, startTime, endTime) => {
         const now = moment();
@@ -396,6 +439,25 @@ const EventManagement = () => {
                                     onClick={() => openModal()}
                                 >
                                     新增事件
+                                </Button>
+
+                                <Button
+                                    type="default"
+                                    icon={<ThunderboltOutlined />}
+                                    onClick={handleTriggerAIAnalysis}
+                                    loading={loading}
+                                >
+                                    AI分析
+                                </Button>
+
+                                <Button
+                                    type="default"
+                                    icon={<ReloadOutlined />}
+                                    onClick={handleGenerateEvents}
+                                    loading={loading}
+                                    style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', color: 'white' }}
+                                >
+                                    更新事件
                                 </Button>
                                 
                                 <Popconfirm
