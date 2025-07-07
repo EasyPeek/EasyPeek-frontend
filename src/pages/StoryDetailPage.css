@@ -311,6 +311,36 @@ body.dark .story-summary p {
   color: #d1d5db;
 }
 
+/* 摘要内容容器 */
+.summary-content {
+  margin: 0;
+}
+
+/* 摘要段落样式 */
+.summary-paragraph {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: #6b7280;
+  margin: 0 0 16px 0;
+  padding: 0;
+  text-align: justify;
+  text-indent: 2em; /* 中文段落首行缩进 */
+}
+
+.summary-paragraph:last-child {
+  margin-bottom: 0;
+}
+
+body.dark .summary-paragraph {
+  color: #d1d5db;
+}
+
+/* 单段落摘要（较短内容） */
+.summary-content p:only-child {
+  margin: 0;
+  text-indent: 0; /* 单段落不缩进 */
+}
+
 /* 故事统计行 */
 .story-stats-row {
   display: flex;

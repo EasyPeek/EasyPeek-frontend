@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './AINewsSummary.css';
 import { aiApi } from '../api/aiApi';
 
-const AINewsSummary = ({ newsId, news, isEvent = false }) => {
+const AINewsSummary = ({ newsId, news, isEvent = false, onAnalysisUpdate }) => {
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -14,6 +14,14 @@ const AINewsSummary = ({ newsId, news, isEvent = false }) => {
       loadAnalysis();
     }
   }, [newsId]);
+
+  // 当分析数据更新时，通知父组件
+  useEffect(() => {
+    if (analysis && onAnalysisUpdate) {
+      console.log('📤 AINewsSummary: 分析数据已更新，通知父组件', analysis);
+      onAnalysisUpdate(analysis);
+    }
+  }, [analysis, onAnalysisUpdate]);
 
   // 加载阶段管理
   useEffect(() => {
@@ -56,6 +64,10 @@ const AINewsSummary = ({ newsId, news, isEvent = false }) => {
       
       if (existingAnalysis && existingAnalysis.data) {
         setAnalysis(existingAnalysis.data);
+        // 通知父组件分析数据已更新
+        if (onAnalysisUpdate) {
+          onAnalysisUpdate(existingAnalysis.data);
+        }
       } else {
         // 如果没有分析结果，则生成新的分析
         await generateAnalysis();
@@ -96,6 +108,10 @@ const AINewsSummary = ({ newsId, news, isEvent = false }) => {
       
       if (response && response.data) {
         setAnalysis(response.data);
+        // 通知父组件分析数据已更新
+        if (onAnalysisUpdate) {
+          onAnalysisUpdate(response.data);
+        }
       }
     } catch (err) {
       console.error('生成分析失败:', err);

@@ -44,6 +44,10 @@ export default function NewsPage() {
   const [replyingTo, setReplyingTo] = useState(null); // 当前正在回复的评论ID
   const [replyInput, setReplyInput] = useState(""); // 回复输入内容
 
+  // AI分析相关状态
+  const [aiAnalysis, setAiAnalysis] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
   // 分页相关计算
   const totalPages = Math.ceil(commentsTotal / COMMENTS_PAGE_SIZE);
   const hasNextPage = commentsPage < totalPages;
@@ -203,6 +207,7 @@ export default function NewsPage() {
     fetchNewsData();
     fetchCategories(); // 获取分类列表
     fetchLikeStatus(); // 获取点赞状态
+    // AI分析数据现在从AINewsSummary组件获取
   }, [id]);
 
   // 当筛选条件改变时重新获取相关新闻
@@ -255,6 +260,8 @@ export default function NewsPage() {
       console.log('获取点赞状态失败:', error);
     }
   };
+
+  // AI分析数据现在通过AINewsSummary组件的回调获取
 
   // 处理点赞操作
   const handleLike = async () => {
@@ -789,6 +796,11 @@ export default function NewsPage() {
               newsId={newsData.id} 
               news={newsData}
               isEvent={false}
+              onAnalysisUpdate={(analysisData) => {
+                console.log('📤 从AINewsSummary接收到分析数据:', analysisData);
+                console.log('📤 AI关键词数据:', analysisData?.keywords);
+                setAiAnalysis(analysisData);
+              }}
             />
 
             {/* 新闻内容 */}
@@ -812,124 +824,455 @@ export default function NewsPage() {
                 )}
                 
                 <div className="news-content">
-                  {newsData.content && splitIntoParagraphs(newsData.content).map((paragraph, index) => {
-                    // 检查段落是否包含图片链接
-                    const imageUrlRegex = /https?:\/\/[^\s]+\.(jpg|jpeg|png|gif|webp|svg)(\?[^\s]*)?/gi;
-                    const imageUrls = paragraph.match(imageUrlRegex);
+                  {(() => {
+                    // HTML内容格式化函数
+                    const formatHtmlContent = (htmlContent) => {
+                      if (!htmlContent) return [];
+                      
+                      // 创建临时DOM元素来解析HTML
+                      const tempDiv = document.createElement('div');
+                      tempDiv.innerHTML = htmlContent;
+                      
+                      const elements = [];
+                      
+                      // 递归处理DOM节点
+                      const processNode = (node, index = 0) => {
+                        if (node.nodeType === Node.TEXT_NODE) {
+                          const text = node.textContent.trim();
+                          if (text) {
+                            return (
+                              <span key={`text-${index}`} className="news-text">
+                                {text}
+                              </span>
+                            );
+                          }
+                          return null;
+                        }
+                        
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                          const tagName = node.tagName.toLowerCase();
+                          const content = Array.from(node.childNodes).map((child, childIndex) => 
+                            processNode(child, `${index}-${childIndex}`)
+                          ).filter(Boolean);
+                          
+                          // 检查是否包含图片链接
+                          const text = node.textContent || '';
+                          const imageUrlRegex = /https?:\/\/[^\s]+\.(jpg|jpeg|png|gif|webp|svg)(\?[^\s]*)?/gi;
+                          const imageUrls = text.match(imageUrlRegex);
+                          
+                          switch (tagName) {
+                            case 'h1':
+                              return (
+                                <h1 key={`h1-${index}`} className="news-heading-1">
+                                  {content}
+                                </h1>
+                              );
+                            case 'h2':
+                              return (
+                                <h2 key={`h2-${index}`} className="news-heading-2">
+                                  {content}
+                                </h2>
+                              );
+                            case 'h3':
+                              return (
+                                <h3 key={`h3-${index}`} className="news-heading-3">
+                                  {content}
+                                </h3>
+                              );
+                            case 'h4':
+                              return (
+                                <h4 key={`h4-${index}`} className="news-heading-4">
+                                  {content}
+                                </h4>
+                              );
+                            case 'p':
+                              if (imageUrls && imageUrls.length > 0) {
+                                return (
+                                  <div key={`p-images-${index}`} className="paragraph-with-images">
+                                    {imageUrls.map((imageUrl, imgIndex) => (
+                                      <div key={imgIndex} className="embedded-image-container">
+                                        <img 
+                                          src={imageUrl.trim()} 
+                                          alt={`新闻图片 ${imgIndex + 1}`}
+                                          className="embedded-news-image"
+                                          onError={(e) => {
+                                            e.target.style.display = 'none';
+                                          }}
+                                          onLoad={(e) => {
+                                            e.target.style.display = 'block';
+                                          }}
+                                        />
+                                      </div>
+                                    ))}
+                                    {text.replace(imageUrlRegex, '').trim() && (
+                                      <p className="news-paragraph">
+                                        {text.replace(imageUrlRegex, '').trim()}
+                                      </p>
+                                    )}
+                                  </div>
+                                );
+                              }
+                              return (
+                                <p key={`p-${index}`} className="news-paragraph">
+                                  {content}
+                                </p>
+                              );
+                            case 'ul':
+                              return (
+                                <ul key={`ul-${index}`} className="news-list">
+                                  {content}
+                                </ul>
+                              );
+                            case 'ol':
+                              return (
+                                <ol key={`ol-${index}`} className="news-ordered-list">
+                                  {content}
+                                </ol>
+                              );
+                            case 'li':
+                              return (
+                                <li key={`li-${index}`} className="news-list-item">
+                                  {content}
+                                </li>
+                              );
+                            case 'strong':
+                            case 'b':
+                              return (
+                                <strong key={`strong-${index}`} className="news-bold">
+                                  {content}
+                                </strong>
+                              );
+                            case 'em':
+                            case 'i':
+                              return (
+                                <em key={`em-${index}`} className="news-italic">
+                                  {content}
+                                </em>
+                              );
+                            case 'blockquote':
+                              return (
+                                <blockquote key={`quote-${index}`} className="news-blockquote">
+                                  {content}
+                                </blockquote>
+                              );
+                            case 'pre':
+                              return (
+                                <pre key={`pre-${index}`} className="news-preformatted">
+                                  {content}
+                                </pre>
+                              );
+                            case 'code':
+                              return (
+                                <code key={`code-${index}`} className="news-code">
+                                  {content}
+                                </code>
+                              );
+                            case 'br':
+                              return <br key={`br-${index}`} />;
+                            case 'hr':
+                              return <hr key={`hr-${index}`} className="news-divider" />;
+                            case 'div':
+                              return (
+                                <div key={`div-${index}`} className="news-section">
+                                  {content}
+                                </div>
+                              );
+                            default:
+                              // 对于未知标签，返回内容但不包装
+                              return content.length === 1 ? content[0] : (
+                                <span key={`span-${index}`} className="news-text">
+                                  {content}
+                                </span>
+                              );
+                          }
+                        }
+                        
+                        return null;
+                      };
+                      
+                      // 处理所有子节点
+                      Array.from(tempDiv.childNodes).forEach((node, index) => {
+                        const element = processNode(node, index);
+                        if (element) {
+                          elements.push(element);
+                        }
+                      });
+                      
+                      return elements;
+                    };
                     
-                    if (imageUrls && imageUrls.length > 0) {
-                      // 如果段落包含图片链接，渲染图片
-                      return (
-                        <div key={index} className="paragraph-with-images">
-                          {imageUrls.map((imageUrl, imgIndex) => (
-                            <div key={imgIndex} className="embedded-image-container">
-                              <img 
-                                src={imageUrl.trim()} 
-                                alt={`新闻图片 ${imgIndex + 1}`}
-                                className="embedded-news-image"
-                                onError={(e) => {
-                                  e.target.style.display = 'none';
-                                }}
-                                onLoad={(e) => {
-                                  e.target.style.display = 'block';
-                                }}
-                              />
-                            </div>
-                          ))}
-                          {/* 显示去除图片链接后的文本 */}
-                          {paragraph.replace(imageUrlRegex, '').trim() && (
-                            <p className="news-paragraph">
-                              {paragraph.replace(imageUrlRegex, '').trim()}
-                            </p>
-                          )}
-                        </div>
-                      );
+                    // 如果内容包含HTML标签，使用HTML格式化
+                    if (newsData.content && /<[^>]+>/.test(newsData.content)) {
+                      return formatHtmlContent(newsData.content);
                     } else {
-                      // 普通文本段落
-                      return (
-                        <p key={index} className="news-paragraph">
-                          {paragraph}
-                        </p>
-                      );
+                      // 如果没有HTML标签，使用原来的段落分割方式
+                      return splitIntoParagraphs(newsData.content).map((paragraph, index) => {
+                        // 检查段落是否包含图片链接
+                        const imageUrlRegex = /https?:\/\/[^\s]+\.(jpg|jpeg|png|gif|webp|svg)(\?[^\s]*)?/gi;
+                        const imageUrls = paragraph.match(imageUrlRegex);
+                        
+                        if (imageUrls && imageUrls.length > 0) {
+                          return (
+                            <div key={index} className="paragraph-with-images">
+                              {imageUrls.map((imageUrl, imgIndex) => (
+                                <div key={imgIndex} className="embedded-image-container">
+                                  <img 
+                                    src={imageUrl.trim()} 
+                                    alt={`新闻图片 ${imgIndex + 1}`}
+                                    className="embedded-news-image"
+                                    onError={(e) => {
+                                      e.target.style.display = 'none';
+                                    }}
+                                    onLoad={(e) => {
+                                      e.target.style.display = 'block';
+                                    }}
+                                  />
+                                </div>
+                              ))}
+                              {paragraph.replace(imageUrlRegex, '').trim() && (
+                                <p className="news-paragraph">
+                                  {paragraph.replace(imageUrlRegex, '').trim()}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        } else {
+                          return (
+                            <p key={index} className="news-paragraph">
+                              {paragraph}
+                            </p>
+                          );
+                        }
+                      });
                     }
-                  })}
+                  })()}
                 </div>
                 
                 {/* 标签区域 */}
+                {(() => {
+                  // 关键词处理和增强（优先使用AI分析的关键词）
+                  const processKeywords = () => {
+                    let keywords = [];
+                    let dataSource = 'none';
+                    
+                    console.log('🎯 处理标签关键词:', { aiAnalysis: !!aiAnalysis, keywords: aiAnalysis?.keywords });
+                    
+                    // 优先使用AI分析的关键词
+                    if (aiAnalysis && aiAnalysis.keywords) {
+                      
+                      if (Array.isArray(aiAnalysis.keywords)) {
+                        // 直接检查并强制分割包含逗号的字符串
+                        if (aiAnalysis.keywords.length === 1 && typeof aiAnalysis.keywords[0] === 'string') {
+                          const firstElement = aiAnalysis.keywords[0];
+                          // 检查是否包含中文逗号或英文逗号
+                          if (firstElement.includes(',') || firstElement.includes('，')) {
+                            // 分割字符串，支持中文和英文逗号
+                            keywords = firstElement.split(/[,，]/).map(k => k.trim()).filter(k => k);
+                            dataSource = 'ai-array-split';
+                            console.log('✅ 成功分割AI关键词:', keywords);
+                          } else {
+                            keywords = aiAnalysis.keywords;
+                            dataSource = 'ai-array';
+                            console.log('❌ 未发现逗号，使用原始数组:', keywords);
+                          }
+                        } else {
+                          keywords = aiAnalysis.keywords;
+                          dataSource = 'ai-array';
+                          console.log('❌ 数组长度不为1或非字符串，使用原始数组:', keywords);
+                        }
+                      } else if (typeof aiAnalysis.keywords === 'string') {
+                        try {
+                          keywords = JSON.parse(aiAnalysis.keywords);
+                          dataSource = 'ai-json';
+                        } catch {
+                          // 如果是逗号分割的字符串
+                          keywords = aiAnalysis.keywords.split(',').map(k => k.trim());
+                          dataSource = 'ai-string';
+                        }
+                      }
+                    } 
+                    
+                    // 如果没有AI关键词，使用新闻的tags作为备选
+                    if (keywords.length === 0) {
+                      if (newsData.tags && Array.isArray(newsData.tags)) {
+                        keywords = newsData.tags;
+                        dataSource = 'tags-array';
+                      }
+                      // 如果tags是字符串，尝试解析
+                      else if (newsData.tags && typeof newsData.tags === 'string' && newsData.tags.trim()) {
+                        try {
+                          keywords = JSON.parse(newsData.tags);
+                          dataSource = 'tags-json';
+                        } catch {
+                          // 如果解析失败，按逗号分割
+                          keywords = newsData.tags.split(',').map(tag => tag.trim());
+                          dataSource = 'tags-string';
+                        }
+                      }
+                    }
+                    
+                    console.log(`📍 关键词来源: ${dataSource}, 数量: ${keywords.length}`);
+                    
+                    if (!keywords || keywords.length === 0) return [];
+                    
+                    // 清理和过滤关键词
+                    const cleanKeywords = keywords
+                      .map(keyword => {
+                        // 处理各种数据类型
+                        if (typeof keyword === 'string') {
+                          return keyword.trim();
+                        } else if (typeof keyword === 'object' && keyword !== null) {
+                          // 如果是对象，尝试获取name或text字段
+                          return keyword.name || keyword.text || keyword.value || String(keyword).trim();
+                        } else {
+                          return String(keyword).trim();
+                        }
+                      })
+                      .filter(keyword => keyword && keyword.length > 0 && keyword.length <= 20 && keyword !== '[]' && keyword !== '{}') // 过滤空关键词、过长关键词和无效数据
+                      .slice(0, 12); // 最多显示12个关键词
+                    
 
-                {newsData.tags && Array.isArray(newsData.tags) && newsData.tags.length > 0 && (
-                  <div className="news-tags-section">
-                    <span className="tags-label">相关标签：</span>
-                    <div className="tags-container">
-                      {newsData.tags.map((tag, index) => (
-                        <span key={index} className="tag">{tag}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+                    
+                    // 如果仍然没有有效关键词，尝试从新闻数据中提取
+                    if (cleanKeywords.length === 0) {
+                      // 使用新闻分类作为关键词
+                      if (newsData.category) {
+                        cleanKeywords.push(newsData.category);
+                        dataSource = 'category';
+                      }
+                      // 如果有来源，也可以作为标签
+                      if (newsData.source && cleanKeywords.length < 3) {
+                        cleanKeywords.push(newsData.source);
+                        dataSource = dataSource === 'category' ? 'category+source' : 'source';
+                      }
+                      
+                      // 最终回退：如果还是没有关键词，添加一些基础标签
+                      if (cleanKeywords.length === 0) {
+                        cleanKeywords.push('新闻');
+                        if (newsData.published_at) {
+                          const date = new Date(newsData.published_at);
+                          const today = new Date();
+                          const diffDays = Math.floor((today - date) / (1000 * 60 * 60 * 24));
+                          if (diffDays === 0) {
+                            cleanKeywords.push('今日新闻');
+                          } else if (diffDays <= 7) {
+                            cleanKeywords.push('本周新闻');
+                          }
+                        }
+                        dataSource = 'fallback';
+                      }
+                    }
+                    
+                    console.log('✅ 最终标签:', cleanKeywords);
+                    
+                    // 为关键词添加颜色主题
+                    const tagColors = [
+                      'blue', 'green', 'purple', 'orange', 'red', 'pink',
+                      'indigo', 'teal', 'cyan', 'emerald', 'violet', 'amber'
+                    ];
+                    
+                    return cleanKeywords.map((keyword, index) => ({
+                      name: keyword,
+                      color: tagColors[index % tagColors.length],
+                      id: `keyword-${index}-${keyword.toLowerCase().replace(/\s+/g, '-')}`,
+                      source: dataSource
+                    }));
+                  };
 
-            {/* 事件时间线 */}
-            {newsData.timeline && newsData.timeline.length > 0 ? (
-              <div className="content-card">
-                <div className="card-header">
-                  <h2 className="card-title">📅 事件时间线</h2>
-                  <p className="card-subtitle">完整追踪事件发展过程</p>
-                </div>
-                <div className="card-body">
-                  <div className="timeline-container">
-                    {newsData.timeline.map((event, index) => (
-                      <div key={index} className="timeline-item">
-                        <div className="timeline-connector">
-                          <div className="timeline-dot">
-                            {index + 1}
-                          </div>
-                          {index !== newsData.timeline.length - 1 && (
-                            <div className="timeline-line"></div>
+                  // 处理关键词点击事件
+                  const handleKeywordClick = (keywordName) => {
+                    // 在新标签页中打开关键词搜索
+                    const searchUrl = `/search?q=${encodeURIComponent(keywordName)}&type=keywords`;
+                    window.open(searchUrl, '_blank');
+                  };
+
+                  const processedKeywords = processKeywords();
+                  
+                  // 临时调试：显示当前状态
+                  console.log('🔍 标签渲染时的状态:', {
+                    aiAnalysis: aiAnalysis,
+                    hasKeywords: !!(aiAnalysis && aiAnalysis.keywords),
+                    keywordsData: aiAnalysis?.keywords,
+                    processedKeywords: processedKeywords
+                  });
+
+                  return processedKeywords.length > 0 && (
+                    <div className="news-tags-section">
+                      <div className="tags-header">
+                        <div className="tags-title">
+                          <svg className="tags-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a4 4 0 014-4z" />
+                          </svg>
+                          <span className="tags-label">
+                            {processedKeywords.some(k => k.source?.startsWith('ai')) ? 'AI提取关键词' : '相关标签'}
+                          </span>
+                          <span className="tags-count">({processedKeywords.length})</span>
+                          {processedKeywords.some(k => k.source?.startsWith('ai')) && (
+                            <span className="ai-badge">🤖</span>
                           )}
                         </div>
-                        
-                        <div className="timeline-content">
-                          <div className="timeline-header">
-                            <span className="timeline-date">{event.date} {event.time}</span>
-                            <span className={`timeline-importance ${event.importance}`}>
-                              {event.importance === "high" ? "重要" : "一般"}
+                        {processedKeywords.length > 6 && (
+                          <button 
+                            className="tags-show-all"
+                            onClick={() => {
+                              const container = document.querySelector('.tags-container');
+                              container.classList.toggle('show-all');
+                              const btn = document.querySelector('.tags-show-all');
+                              btn.textContent = container.classList.contains('show-all') ? '收起' : '查看全部';
+                            }}
+                          >
+                            查看全部
+                          </button>
+                        )}
+                      </div>
+                      <div className="tags-container">
+                        {processedKeywords.map((keyword, index) => (
+                          <button
+                            key={keyword.id}
+                            className={`enhanced-tag tag-${keyword.color}`}
+                            onClick={() => handleKeywordClick(keyword.name)}
+                            title={`点击搜索"${keyword.name}"相关新闻`}
+                            style={{
+                              animationDelay: `${index * 0.1}s`
+                            }}
+                          >
+                            <span className="tag-icon">
+                              {keyword.source?.startsWith('ai') ? '🎯' : '🏷️'}
                             </span>
-                          </div>
-                          
-                          <h4 className="timeline-title">{event.title}</h4>
-                          <p className="timeline-description">{event.content}</p>
-                          
-                          {event.sources && event.sources.length > 0 && (
-                            <div className="timeline-sources">
-                              <span className="sources-label">消息来源：</span>
-                              <div className="sources-tags">
-                                {event.sources.map((source, idx) => (
-                                  <span key={idx} className="source-tag">{source}</span>
-                                ))}
-                              </div>
-                            </div>
+                            <span className="tag-text">{keyword.name}</span>
+                            <span className="tag-hover-effect">
+                              <svg className="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                              </svg>
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                      
+                      {/* 关键词统计信息 */}
+                      <div className="tags-stats">
+                        <div className="tags-info">
+                          <svg className="info-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <span>
+                            {aiAnalysis && aiAnalysis.keywords 
+                              ? '点击AI关键词可搜索相关新闻' 
+                              : '点击标签可搜索相关新闻'
+                            }
+                          </span>
+                          {aiLoading && (
+                            <span className="ai-loading"> • AI分析中...</span>
                           )}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    </div>
+                  );
+                })()}
               </div>
-            ) : (
-              <div className="content-card">
-                <div className="card-header">
-                  <h2 className="card-title">📅 事件时间线</h2>
-                  <p className="card-subtitle">完整追踪事件发展过程</p>
-                </div>
-                <div className="card-body">
-                  <div className="timeline-empty">
-                    <p>暂无相关事件时间线数据</p>
-                  </div>
-                </div>
-              </div>
-            )}
+            </div>
+
+
           </div>
 
           {/* 侧边栏 */}

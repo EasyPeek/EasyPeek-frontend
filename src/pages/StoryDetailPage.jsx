@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { safeDisplayText, safeDisplayTitle } from '../utils/htmlUtils';
+import { safeDisplayText, safeDisplayTitle, splitIntoParagraphs } from '../utils/htmlUtils';
 import Header from '../components/Header';
 import ThemeToggle from '../components/ThemeToggle';
 import AINewsSummary from '../components/AINewsSummary';
@@ -502,7 +502,115 @@ const StoryDetailPage = () => {
             
             <div className="story-summary">
               <h2>事件摘要</h2>
-              <p>{safeDisplayText(formattedStory.summary, 500)}</p>
+              <div className="summary-content">
+                {(() => {
+                  // 智能分段函数
+                  const smartSplitText = (text) => {
+                    if (!text) return [];
+                    
+                    // 清理文本
+                    let cleanText = safeDisplayText(text);
+                    if (!cleanText) return [];
+                    
+                    // 清理特殊符号和格式标记
+                    cleanText = cleanText
+                      // 清理Markdown标题标记
+                      .replace(/^#{1,6}\s*/gm, '')
+                      // 清理所有#符号
+                      .replace(/#/g, '')
+                      // 清理Markdown粗体/斜体标记
+                      .replace(/\*{1,2}([^*]+)\*{1,2}/g, '$1')
+                      .replace(/_{1,2}([^_]+)_{1,2}/g, '$1')
+                      // 清理结构化数据标记
+                      .replace(/\*\*([^*]+)\*\*:/g, '$1:')
+                      .replace(/\|\s*/g, ' ')
+                      // 清理多余的冒号和分隔符
+                      .replace(/[:：]\s*$/gm, '')
+                      .replace(/[\|\[\]]/g, '')
+                      // 清理时间戳格式
+                      .replace(/\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/g, '')
+                      // 清理"来源"、"发布时间"、"摘要"等标签
+                      .replace(/(来源|发布时间|摘要|标题)[:：]\s*/g, '')
+                      // 清理连续的空白字符
+                      .replace(/\s+/g, ' ')
+                      // 清理行首行尾空白
+                      .trim();
+                    
+                    // 如果文本较短，直接返回
+                    if (cleanText.length <= 200) {
+                      return [cleanText];
+                    }
+                    
+                    // 按句号分段
+                    let segments = cleanText.split(/[。！？]/).filter(s => s.trim().length > 0);
+                    
+                    // 如果分段效果不好，按句子分段
+                    if (segments.length <= 1) {
+                      segments = cleanText.split(/[.!?]/).filter(s => s.trim().length > 0);
+                    }
+                    
+                    // 如果还是分段效果不好，按长度智能分段
+                    if (segments.length <= 1) {
+                      segments = [];
+                      let currentSegment = '';
+                      const words = cleanText.split(' ');
+                      
+                      for (const word of words) {
+                        if (currentSegment.length + word.length > 150) {
+                          if (currentSegment.trim()) {
+                            segments.push(currentSegment.trim());
+                          }
+                          currentSegment = word;
+                        } else {
+                          currentSegment += (currentSegment ? ' ' : '') + word;
+                        }
+                      }
+                      
+                      if (currentSegment.trim()) {
+                        segments.push(currentSegment.trim());
+                      }
+                    }
+                    
+                    // 合并过短的段落
+                    const finalSegments = [];
+                    let currentParagraph = '';
+                    
+                    for (const segment of segments) {
+                      const segmentText = segment.trim();
+                      if (!segmentText) continue;
+                      
+                      if (currentParagraph.length + segmentText.length < 120) {
+                        currentParagraph += (currentParagraph ? '。' : '') + segmentText;
+                      } else {
+                        if (currentParagraph) {
+                          finalSegments.push(currentParagraph);
+                        }
+                        currentParagraph = segmentText;
+                      }
+                    }
+                    
+                    if (currentParagraph) {
+                      finalSegments.push(currentParagraph);
+                    }
+                    
+                    return finalSegments.slice(0, 4); // 最多显示4段
+                  };
+                  
+                  const paragraphs = smartSplitText(formattedStory.summary);
+                  
+                  // 如果分段失败，使用原来的显示方式
+                  if (!paragraphs || paragraphs.length === 0) {
+                    return <p>{safeDisplayText(formattedStory.summary, 400)}</p>;
+                  }
+                  
+                  // 显示段落
+                  return paragraphs.map((paragraph, index) => (
+                    <p key={index} className="summary-paragraph">
+                      {paragraph.length > 200 ? paragraph.substring(0, 200) + '...' : paragraph}
+                    </p>
+                  ));
+                })()}
+              </div>
             </div>
             
             {/* AI智能分析 - 分析整个事件 */}
